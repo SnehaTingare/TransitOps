@@ -9,6 +9,7 @@ const maintenanceRoutes = require("./routes/maintenanceRoutes");
 const fuelRoutes = require("./routes/fuelRoutes");
 const expenseRoutes = require("./routes/expenseRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const reportRoutes = require("./routes/reportRoutes");
 
 const app = express();
 
@@ -23,6 +24,8 @@ app.use("/api/maintenance", maintenanceRoutes);
 app.use("/api/fuel-logs", fuelRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/reports", reportRoutes);
+
 
 app.get("/api/health", (req, res) => {
   res.status(200).json({
