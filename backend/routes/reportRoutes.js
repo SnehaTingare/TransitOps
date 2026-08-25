@@ -2,6 +2,7 @@ const express = require("express");
 
 const {
   getVehicleAnalytics,
+  exportCsv,
 } = require("../controllers/reportController");
 
 const authMiddleware = require("../middleware/authMiddleware");
@@ -15,6 +16,14 @@ router.get(
   authMiddleware,
   roleMiddleware("FLEET_MANAGER", "FINANCIAL_ANALYST"),
   getVehicleAnalytics
+);
+
+// CSV Export
+router.get(
+  "/export/csv",
+  authMiddleware,
+  roleMiddleware("FLEET_MANAGER", "FINANCIAL_ANALYST"),
+  exportCsv
 );
 
 module.exports = router;

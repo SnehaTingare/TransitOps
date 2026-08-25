@@ -4,6 +4,7 @@ const Vehicle = require("../models/Vehicle");
 const Trip = require("../models/Trip");
 const FuelLog = require("../models/FuelLog");
 const MaintenanceLog = require("../models/MaintenanceLog");
+const Expense = require("../models/Expense");
 
 const validateVehicleId = (vehicleId) => {
   if (!mongoose.Types.ObjectId.isValid(vehicleId)) {
@@ -188,7 +189,215 @@ const getVehicleAnalytics = async (filters = {}) => {
 
   return analytics;
 };
+const buildDateFilter = (from, to) => {
+  const dateFilter = {};
+
+  if (from !== undefined) {
+    const fromDate = new Date(from);
+
+    if (Number.isNaN(fromDate.getTime())) {
+      throw new Error("Invalid from date");
+    }
+
+    dateFilter.$gte = fromDate;
+  }
+
+  if (to !== undefined) {
+    const toDate = new Date(to);
+
+    if (Number.isNaN(toDate.getTime())) {
+      throw new Error("Invalid to date");
+    }
+
+    dateFilter.$lte = toDate;
+  }
+
+  return dateFilter;
+};
+
+const validateExportReport = (report) => {
+  const allowedReports = [
+    "vehicles",
+    "trips",
+    "expenses",
+    "fuel",
+    "analytics",
+  ];
+
+  if (!allowedReports.includes(report)) {
+    throw new Error("Unsupported report type");
+  }
+};
+
+const escapeCsvValue = (value) => {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  const stringValue = String(value);
+
+  if (
+    stringValue.includes(",") ||
+    stringValue.includes('"') ||
+    stringValue.includes("\n")
+  ) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+
+  return stringValue;
+};
+
+const convertToCsv = (rows) => {
+  if (!rows || rows.length === 0) {
+    return "";
+  }
+
+  const headers = Object.keys(rows[0]);
+
+  const csvRows = [
+    headers.join(","),
+    ...rows.map((row) =>
+      headers
+        .map((header) => escapeCsvValue(row[header]))
+        .join(",")
+    ),
+  ];
+
+  return csvRows.join("\n");
+};
+
+const getExportData = async (filters = {}) => {
+  const {
+    report,
+    vehicleId,
+    from,
+    to,
+  } = filters;
+
+  validateExportReport(report);
+
+  if (vehicleId !== undefined) {
+    validateVehicleId(vehicleId);
+
+    const vehicleExists = await Vehicle.exists({
+      _id: vehicleId,
+    });
+
+    if (!vehicleExists) {
+      throw new Error("Vehicle not found");
+    }
+  }
+
+  const dateFilter = buildDateFilter(from, to);
+
+  const vehicleFilter = {};
+
+  if (vehicleId !== undefined) {
+    vehicleFilter.vehicleId = vehicleId;
+  }
+
+  let rows = [];
+
+  if (report === "vehicles") {
+    const query = {};
+
+    if (vehicleId !== undefined) {
+      query._id = vehicleId;
+    }
+
+    const vehicles = await Vehicle.find(query).lean();
+
+    rows = vehicles.map((vehicle) => ({
+      vehicleId: vehicle._id,
+      registrationNumber: vehicle.registrationNumber,
+      model: vehicle.model,
+      type: vehicle.type,
+      maxLoadCapacity: vehicle.maxLoadCapacity,
+      odometer: vehicle.odometer,
+      acquisitionCost: vehicle.acquisitionCost,
+      region: vehicle.region,
+      status: vehicle.status,
+    }));
+  }
+
+  if (report === "trips") {
+    const query = {
+      ...vehicleFilter,
+    };
+
+    if (Object.keys(dateFilter).length > 0) {
+      query.createdAt = dateFilter;
+    }
+
+    const trips = await Trip.find(query).lean();
+
+    rows = trips.map((trip) => ({
+      tripId: trip._id,
+      source: trip.source,
+      destination: trip.destination,
+      vehicleId: trip.vehicleId,
+      driverId: trip.driverId,
+      cargoWeight: trip.cargoWeight,
+      plannedDistance: trip.plannedDistance,
+      startOdometer: trip.startOdometer,
+      finalOdometer: trip.finalOdometer,
+      fuelConsumedLiters: trip.fuelConsumedLiters,
+      revenue: trip.revenue,
+      status: trip.status,
+    }));
+  }
+
+  if (report === "fuel") {
+    const query = {
+      ...vehicleFilter,
+    };
+
+    if (Object.keys(dateFilter).length > 0) {
+      query.date = dateFilter;
+    }
+
+    const fuelLogs = await FuelLog.find(query).lean();
+
+    rows = fuelLogs.map((fuel) => ({
+      fuelLogId: fuel._id,
+      vehicleId: fuel.vehicleId,
+      liters: fuel.liters,
+      cost: fuel.cost,
+      date: fuel.date,
+    }));
+  }
+
+  if (report === "expenses") {
+    const query = {
+      ...vehicleFilter,
+    };
+
+    if (Object.keys(dateFilter).length > 0) {
+      query.date = dateFilter;
+    }
+
+    const expenses = await Expense.find(query).lean();
+
+    rows = expenses.map((expense) => ({
+      expenseId: expense._id,
+      vehicleId: expense.vehicleId,
+      type: expense.type,
+      amount: expense.amount,
+      date: expense.date,
+      description: expense.description,
+    }));
+  }
+
+  if (report === "analytics") {
+    rows = await getVehicleAnalytics({
+      vehicleId,
+    });
+  }
+
+  return convertToCsv(rows);
+};
 
 module.exports = {
   getVehicleAnalytics,
+  getExportData,
 };
