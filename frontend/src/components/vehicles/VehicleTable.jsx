@@ -28,7 +28,7 @@ const VehicleTable = ({
           <tr>
             <th>Registration Number</th>
             <th>Type</th>
-            <th>Capacity</th>
+            <th>Max Load Capacity</th>
             <th>Status</th>
             <th>Region</th>
             <th>Actions</th>
@@ -46,9 +46,7 @@ const VehicleTable = ({
                 {vehicle.type}
               </td>
 
-              <td>
-                {vehicle.capacity}
-              </td>
+            <td>{vehicle.maxLoadCapacity ?? "-"}</td>
 
               <td>
                 <span
