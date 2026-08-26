@@ -124,15 +124,38 @@ const getDrivers = async (filters = {}) => {
 
   const query = {};
 
+  // Status filter
   if (status !== undefined) {
     query.status = status;
   }
 
+  // Eligible drivers:
+  // AVAILABLE + license not expired
   if (eligible === "true") {
     query.status = "AVAILABLE";
     query.licenseExpiryDate = {
       $gte: new Date(),
     };
+  }
+
+  // Not eligible drivers:
+  // Either:
+  // 1. Driver is not AVAILABLE
+  // OR
+  // 2. License has expired
+  if (eligible === "false") {
+    query.$or = [
+      {
+        status: {
+          $ne: "AVAILABLE",
+        },
+      },
+      {
+        licenseExpiryDate: {
+          $lt: new Date(),
+        },
+      },
+    ];
   }
 
   const drivers = await Driver.find(query).sort({
