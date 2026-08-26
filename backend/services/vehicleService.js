@@ -74,12 +74,30 @@ const createVehicle = async (vehicleData) => {
 };
 
 const getVehicles = async (filters = {}) => {
-  const { type, status, region } = filters;
+  const {
+    search,
+    type,
+    status,
+    region,
+  } = filters;
 
   validateStatus(status);
 
   const query = {};
 
+  // Search by registration number
+  if (search !== undefined) {
+    const trimmedSearch = search.trim();
+
+    if (trimmedSearch) {
+      query.registrationNumber = {
+        $regex: trimmedSearch,
+        $options: "i",
+      };
+    }
+  }
+
+  // Filter by vehicle type
   if (type !== undefined) {
     if (!type.trim()) {
       throw new Error("Invalid vehicle type filter");
@@ -88,10 +106,12 @@ const getVehicles = async (filters = {}) => {
     query.type = type.trim();
   }
 
+  // Filter by status
   if (status !== undefined) {
     query.status = status;
   }
 
+  // Filter by region
   if (region !== undefined) {
     if (!region.trim()) {
       throw new Error("Invalid region filter");

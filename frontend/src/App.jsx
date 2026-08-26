@@ -17,6 +17,7 @@ import MaintenancePage from "./pages/MaintenancePage";
 import FuelExpensesPage from "./pages/FuelExpensesPage";
 import ReportsPage from "./pages/ReportsPage";
 
+
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
@@ -62,6 +63,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+     
 
       <Route
         path="/drivers"
